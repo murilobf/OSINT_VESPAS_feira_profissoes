@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Desafio OSINT</title>
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --bg: #f3f4f1;
+    --panel: #ffffff;
+    --text: #1d2521;
+    --muted: #5d6a63;
+    --line: #cfd6d1;
+    --accent: #1f6f5c;
+    --accent-text: #ffffff;
+    --ok: #17703f;
+    --err: #b3261e;
+    --hint-bg: #eaf3ef;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121815; --panel: #1a221e; --text: #e4ebe7; --muted: #92a199;
+      --line: #2e3a34; --accent: #4cc2a1; --accent-text: #0d1512;
+      --ok: #5fd68f; --err: #ff8a80; --hint-bg: #1e2c26;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121815; --panel: #1a221e; --text: #e4ebe7; --muted: #92a199;
+    --line: #2e3a34; --accent: #4cc2a1; --accent-text: #0d1512;
+    --ok: #5fd68f; --err: #ff8a80; --hint-bg: #1e2c26;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: Georgia, "Times New Roman", serif; line-height: 1.6;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 20px 48px; }
+  [hidden] { display: none !important; }
+  .info h2 { font-size: 1.3rem; margin: 30px 0 10px; }
+  .info ul { padding-left: 20px; margin: 0 0 14px; }
+  .info li { margin-bottom: 8px; }
+  .flag {
+    font-family: system-ui, sans-serif; font-weight: 600; color: var(--ok);
+    background: var(--hint-bg); border-left: 3px solid var(--ok);
+    padding: 10px 14px; margin: 0 0 8px;
+  }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 20px; }
+  .story p { margin: 0 0 14px; }
+  .story em { color: var(--muted); }
+  .sans, button, input, label {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  .hint-area { margin: 28px 0; }
+  #hint-btn {
+    background: transparent; color: var(--accent); border: 1.5px solid var(--accent);
+    padding: 10px 18px; border-radius: 6px; font-size: .95rem; cursor: pointer;
+  }
+  #hint-btn:hover:not(:disabled) { background: var(--accent); color: var(--accent-text); }
+  #hint-btn:disabled { opacity: .5; cursor: default; }
+  #hints { list-style: none; padding: 0; margin: 14px 0 0; }
+  #hints li {
+    background: var(--hint-bg); border-left: 3px solid var(--accent);
+    padding: 10px 14px; margin-bottom: 8px; font-size: .95rem;
+  }
+
+  form {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 8px; padding: 22px;
+  }
+  label { display: block; font-size: .9rem; margin-bottom: 6px; color: var(--muted); }
+  input {
+    width: 100%; padding: 11px 12px; margin-bottom: 16px; font-size: 1rem;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--line); border-radius: 6px;
+  }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #login-btn {
+    width: 100%; padding: 12px; font-size: 1rem; font-weight: 600; cursor: pointer;
+    background: var(--accent); color: var(--accent-text); border: 0; border-radius: 6px;
+  }
+  #result { margin: 16px 0 0; min-height: 1.5em; font-family: system-ui, sans-serif; font-weight: 600; }
+  #result.ok { color: var(--ok); }
+  #result.err { color: var(--err); }
+  #result.shake { animation: shake .3s; }
+  @keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  @media (prefers-reduced-motion: reduce) { #result.shake { animation: none; } }
+</style>
+</head>
+<body>
+<main id="desafio">
+  <!-- ===== TEXTOS DO DESAFIO (edite à vontade) ===== -->
+  <h1>Acesso ao painel de João</h1>
+  <section class="story">
+    <p>João Silva é um novo membro do VESPAS. Colegas de projeto acabaram notando que ele vazou as credenciais de acesso, e te falaram pra descobrir onde ele as vazou.</p>
+    <p>Descubra as credenciais de João usando informações disponíveis publicamente.</p>
+  </section>
+
+  <!-- ===== DICAS ===== -->
+  <div class="hint-area">
+    <button id="hint-btn" type="button">Pedir uma dica</button>
+    <ul id="hints" aria-live="polite"></ul>
+  </div>
+
+  <!-- ===== LOGIN ===== -->
+  <form id="login-form" autocomplete="off">
+    <label for="user">Usuário</label>
+    <input id="user" name="user" type="text" required>
+    <label for="pass">Senha</label>
+    <input id="pass" name="pass" type="password" required>
+    <button id="login-btn" type="submit">Entrar</button>
+    <p id="result" role="status"></p>
+  </form>
+</main>
+
+<!-- ===== TELA FINAL (aparece após acertar; edite os textos) ===== -->
+<main id="conteudo" class="info" hidden>
+  <h1>Você conseguiu!</h1>
+  <p class="flag" id="flag-final"></p>
+
+  <h2>Siga o VESPAS</h2>
+
+  <h2>O que é OSINT</h2>
+  <p>OSINT (Open Source Intelligence, ou inteligência de fontes abertas) é a coleta e a análise de informações que estão disponíveis publicamente: redes sociais, sites, fóruns, registros públicos, fotos, mapas, notícias e muito mais.</p>
+  <p>Nenhuma invasão é necessária. O poder do OSINT está em juntar pequenas peças, que sozinhas parecem inofensivas, até formar um retrato completo de uma pessoa ou organização.</p>
+  <p>Este desafio foi um exemplo mais direto, apenas para fins educativos, mas mesmo informações inofensivas podem relevar pistas perigosas para pessoas mal intencionadas.</p>
+
+  <h2>Quem usa e para quê</h2>
+  <ul>
+    <li>Profissionais de segurança, em testes de intrusão e no mapeamento da exposição de uma empresa.</li>
+    <li>Jornalistas e verificadores de fatos, para confirmar a origem de fotos e notícias.</li>
+    <li>Investigadores e equipes de resposta a incidentes.</li>
+    <li>Criminosos, em golpes de engenharia social, no chute de senhas e em stalking.</li>
+  </ul>
+
+  <h2>Como se proteger</h2>
+  <ul>
+    <li><strong>Nunca use dados pessoais em senhas.</strong> Nome de pet, datas e cidade são os primeiros palpites de um atacante. Prefira frases longas ou um gerenciador de senhas.</li>
+    <li><strong>Use senhas diferentes em cada serviço</strong> e ative a verificação em duas etapas.</li>
+    <li><strong>Revise a privacidade das suas redes.</strong> Limite quem vê suas publicações, amigos, marcações e lista de seguidores.</li>
+    <li><strong>Cuidado com o que a foto revela.</strong> Fachadas, placas, crachás, telas e o fundo da imagem entregam localização e rotina. Remova os metadados (EXIF) antes de postar.</li>
+    <li><strong>Evite usar o mesmo nome de usuário em todo lugar.</strong> Ele permite ligar seus perfis uns aos outros.</li>
+    <li><strong>Pesquise sobre você mesmo.</strong> Veja o que aparece em buscadores e em vazamentos de dados, e peça a remoção do que não deveria estar público.</li>
+    <li><strong>Desconfie de contatos inesperados</strong> que demonstram saber muito sobre você. Isso pode ser o começo de um golpe.</li>
+    <li><strong>Separe o pessoal do profissional</strong> e pense antes de divulgar cargo, tecnologias usadas e detalhes do trabalho.</li>
+  </ul>
+</main>
+
+<script>
+  // ===== CONFIGURAÇÃO =====
+  const CREDENCIAIS = { usuario: "joaosilva", senha: "vesp@s123" };
+  const MENSAGEM_SUCESSO = "Acesso concedido!";
+  const MENSAGEM_ERRO = "Usuário ou senha incorretos.";
+  const DICAS = [
+    "Comece procurando o nome dele em redes sociais. Lembre-se que ele é membro do projeto VESPAS.",
+    "O nome de usuário costuma ser o mesmo em várias plataformas. Veja o perfil de código dela.",
+    "A senha mistura o nome do pet com o ano em que ele foi adotado.",
+  ];
+  // ======================================
+
+  const hintBtn = document.getElementById("hint-btn");
+  const hintList = document.getElementById("hints");
+  let usadas = 0;
+
+  hintBtn.addEventListener("click", () => {
+    if (usadas >= DICAS.length) return;
+    const li = document.createElement("li");
+    li.textContent = `Dica ${usadas + 1}: ${DICAS[usadas]}`;
+    hintList.appendChild(li);
+    usadas++;
+    if (usadas >= DICAS.length) {
+      hintBtn.disabled = true;
+      hintBtn.textContent = "Sem mais dicas";
+    } else {
+      hintBtn.textContent = `Pedir outra dica (${usadas}/${DICAS.length})`;
+    }
+  });
+
+  document.getElementById("login-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const u = document.getElementById("user").value.trim();
+    const p = document.getElementById("pass").value;
+    const out = document.getElementById("result");
+    out.classList.remove("ok", "err", "shake");
+    void out.offsetWidth; // reinicia a animação
+    if (u === CREDENCIAIS.usuario && p === CREDENCIAIS.senha) {
+      document.getElementById("flag-final").textContent = MENSAGEM_SUCESSO;
+      document.getElementById("desafio").hidden = true;
+      document.getElementById("conteudo").hidden = false;
+      window.scrollTo(0, 0);
+    } else {
+      out.textContent = MENSAGEM_ERRO;
+      out.classList.add("err", "shake");
+    }
+  });
+</script>
+</body>
+</html>
